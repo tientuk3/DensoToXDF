@@ -16,3 +16,8 @@ region or are not specified in the lookup table. Finding these will require some
 
 Run xdfgenerator.py in Python and specify the file name and start offset of the map lookup table. This address varies from model to model,
 but 0x28000 and 0x2C000 are some of the most common ones. If needed, use a hex editor to find your address, it should be obvious (preceded by lots of FF).
+
+### Supported models
+
+No idea. At least numerous motorcycles (Suzuki, Kawasaki) from the Denso SuperH era and apparently many Subaru cars as well. Test it out.
+
