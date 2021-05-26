@@ -19,5 +19,5 @@ but 0x28000 and 0x2C000 are some of the most common ones. If needed, use a hex e
 
 ### Supported models
 
-No idea. At least numerous motorcycles (Suzuki, Kawasaki) from the Denso SuperH era and apparently many Subaru cars as well. Test it out.
+No idea. At least numerous motorcycles (Suzuki, Kawasaki) from the Denso SuperH era (~2002-2010) and apparently many Subaru cars as well. Test it out.
 
