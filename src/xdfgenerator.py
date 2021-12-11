@@ -29,18 +29,18 @@ f_out.writelines([  "<XDFFORMAT version=\"1.70\">\n"
                     "  </XDFHEADER>\n"
                 ] )
 
-while luku(tavu) < 43: # byte actually says there's a map here -> write a table definition
+while luku(tavu) < 0x2b: # byte actually says there's a map here -> write a table definition
 
-    type3d = (luku(tavu) > 15)
+    type3d = (luku(tavu) > 0xF)
 
     x_length = luku(f.read(1)) # x axis size
-    x_format = "16" if (luku(tavu) & 1) else "8"
+    x_format = "8" if ((luku(tavu) & (1 << 2)) != 0) else "16"
 
-    if type3d:
+    if type3d: 
         y_length = luku(f.read(1))
-        y_format = "16" if (luku(tavu) & (1 << 3)) else "8"
+        y_format = "8" if ((luku(tavu) & (1 << 4)) != 0) else "16"
     else:
-        f.read(1) # y axis size or skip a byte
+        f.read(1)
         y_length = 1
 
     f.read(1) # skip a byte
@@ -48,7 +48,7 @@ while luku(tavu) < 43: # byte actually says there's a map here -> write a table 
     x_address = "0x" + f.read(4).hex() # offset of x axis data
     if type3d: y_address = "0x" + f.read(4).hex() # offset of y axis data
     z_address = "0x" + f.read(4).hex() # offset of actual table data
-    z_format = "16" if (luku(tavu) & (1 << 15)) else "8"
+    z_format = "8" if ((luku(tavu) & 1) != 0) else "16"
     f.read(4) # 4 empty bytes here
     tavu = f.read(1)
 
