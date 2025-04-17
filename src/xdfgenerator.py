@@ -18,7 +18,7 @@ class MapInfo():
         self.x_format = self.get_x_element_size(self._id)
         self.z_format = self.get_z_element_size(self._id)
         if (_type == '3d'):
-            self.y_format = self.get_x_element_size(self._id)
+            self.y_format = self.get_y_element_size(self._id)
         else:
             self.y_format = None
     
