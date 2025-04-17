@@ -69,13 +69,75 @@ class MapInfo():
             return 8
         else:
             return 16
+        
+    @staticmethod
+    def validate_map_info_format(map_info_data: bytes, bin_size: int) -> bool:
+        # try to check whether map_info_data is a valid MapInfo struct
+        if map_info_data[3] not in [0, 0xff]: # padding byte, 0 or FF depending on version
+            return False
+        if not all(i == 0 for i in map_info_data[-4:]): # four zero-padding bytes at the end
+            return False
+        try:
+            map_info = MapInfo.from_bytes(map_info_data)
+            # must have plausible addresses
+            if map_info.x_addr == 0 or map_info.x_addr >= bin_size:
+                return False
+            if map_info.y_addr:
+                if map_info.y_addr == 0 or map_info.y_addr >= bin_size:
+                    return False
+            if map_info.z_addr == 0 or map_info.z_addr >= bin_size:
+                return False
+        except ValueError:
+            return False
+        return True
+    
+    @staticmethod
+    def find_lookup_table_offset(data: bytes) -> int:
+        # find the start offset of the map lookup table
+        OFFSET_ALIGNMENT = 4    # to my best knowledge the structure is always 4-aligned
+        VALID_N_THRESHOLD = 5   # at least n consecutive valid maps must be found to determine
+                                # the start of the map lookup table
+    
+        position = 0
+        candidate_offset: int = None
+        valid_n = 0
+        
+        while position < len(data):
+            try:
+                map_type = MapInfo.get_map_type(data[position])
+                map_info_size = MapInfo.get_map_info_size(map_type)
+                map_info_bytes = data[position : position + map_info_size]
+                if MapInfo.validate_map_info_format(map_info_bytes, len(data)):
+                    if not candidate_offset:
+                        candidate_offset = position
+                    valid_n += 1
+                    if valid_n >= VALID_N_THRESHOLD:
+                        print(f"Found lookup table offset: {hex(candidate_offset)}")
+                        return candidate_offset
+                    # continue to where the next map is calculated to start
+                    position += map_info_size
+                    continue
+            except ValueError:
+                pass
+            # the offset at "position" did not contain a valid MapInfo
+            if candidate_offset:
+                # go back to where we left off if it was not the offset we were looking for
+                position = candidate_offset
+                candidate_offset = None
+            position += 1 * OFFSET_ALIGNMENT
+            valid_n = 0
+        raise ValueError("Cannot determine lookup table offset, please provide the --position argument.")
 
 def generate_xdf(in_file: str, out_file: str, map_data_offset: int):
     # read the ECU bin into a buffer
     with open(in_file, 'rb') as input_file:
         input_bytes = input_file.read()
     
-    position = map_data_offset
+    if map_data_offset is not None: # user provided offset
+        position = map_data_offset
+    else: # attempt to find the offset
+        position = MapInfo.find_lookup_table_offset(input_bytes)
+        
     maps: list[MapInfo] = []
     
     # parse the binary data into MapInfo objects
@@ -96,7 +158,7 @@ def generate_xdf(in_file: str, out_file: str, map_data_offset: int):
 
     # create the XDF file from the MapInfo list
     with open(out_file, 'w', encoding='utf-16') as f_out:
-        f_out.write(f"""<!-- Written on {str(datetime.now())} by tientuk3 Denso SuperH XDF generator -->
+        f_out.write(f"""<!-- Written on {str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))} by tientuk3 Denso SuperH XDF generator -->
 <XDFFORMAT version="1.70">
     <XDFHEADER>
         <flags>0x1</flags>
@@ -186,9 +248,11 @@ def generate_xdf(in_file: str, out_file: str, map_data_offset: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate TunerPro XDF definition file from Denso SuperH/M32R ECU binaries')
-    parser.add_argument('--position', required=True, type=lambda val: int(val, 16),
-                        help='Hexadecimal offset of the start of the map data area')
-    parser.add_argument('in_file', help='Input BIN file path')
+    parser.add_argument('--position', type=lambda val: int(val, 16),
+                        help='''Hexadecimal offset of the start of the map data area. If this
+                        argument is not provided, the program attempts to find it automatically.
+                        ''')
+    parser.add_argument('in_file', help='Input bin file path')
     parser.add_argument('out_file', help='Output XDF file path')
     args = parser.parse_args()
     
